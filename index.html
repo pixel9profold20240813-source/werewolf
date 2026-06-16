@@ -1,0 +1,1767 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 狼人殺 - 預女獵白狼王板（無警長）</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#080c14',
+                        darkCard: '#111827',
+                        wolfRed: '#ef4444',
+                        wolfGold: '#f59e0b',
+                        wolfBlue: '#3b82f6',
+                        wolfPurple: '#8b5cf6',
+                        wolfEmerald: '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Noto Sans Font -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #080c14;
+            background-image: radial-gradient(circle at 50% 50%, #151c2c 0%, #080c14 100%);
+        }
+        .glow-gold:hover {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col antialiased">
+
+    <!-- 頂部狀態欄 -->
+    <header class="border-b border-gray-800 bg-gray-950/80 backdrop-blur px-4 py-3 flex justify-between items-center sticky top-0 z-50">
+        <div class="flex items-center gap-2">
+            <span class="text-wolfRed text-2xl font-black tracking-widest flex items-center gap-2">
+                <i class="fa-solid fa-wolf-pack-battalion text-wolfRed animate-pulse"></i> AI 狼人殺
+            </span>
+            <span class="bg-red-950/60 text-wolfRed text-[10px] px-2 py-0.5 rounded border border-red-900/50 font-bold">預女獵白狼王板</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-config-modal" class="text-gray-300 hover:text-white transition px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-xs flex items-center gap-1.5 border border-gray-700">
+                <i class="fa-solid fa-key text-wolfGold"></i> 設定 API / Firebase
+            </button>
+            <div id="connection-status" class="flex items-center gap-1.5 text-xs bg-amber-950/40 text-wolfGold border border-amber-900/50 px-2.5 py-1 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-wolfGold animate-pulse"></span>
+                <span>單機AI對戰模式</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要遊戲區域 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col lg:flex-row gap-6 relative overflow-hidden">
+        
+        <!-- 左邊欄：10人座位與秘密面板 -->
+        <section class="w-full lg:w-1/3 flex flex-col gap-4">
+            <!-- 席位狀態 -->
+            <div class="bg-darkCard/90 border border-gray-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-black flex items-center gap-1.5 text-wolfGold">
+                        <i class="fa-solid fa-users"></i> 遊戲席位 (10人制)
+                    </h2>
+                    <span id="player-count" class="text-xs font-mono text-gray-500">0 / 10 就座</span>
+                </div>
+                
+                <!-- 10座位佈局 -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-2 gap-2.5" id="seats-container">
+                    <!-- 動態渲染 -->
+                </div>
+            </div>
+
+            <!-- 我的專屬秘密面板 -->
+            <div id="private-panel" class="bg-darkCard/90 border border-gray-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col justify-between hidden">
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">我的身份特權卡</h3>
+                        <span id="revealed-status" class="text-[9px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">已保護</span>
+                    </div>
+                    <div id="my-role-card" class="bg-gray-950 border border-gray-800 p-4 rounded-lg flex items-center gap-4 transition duration-300">
+                        <div class="w-12 h-12 rounded-full bg-gray-900 flex items-center justify-center text-2xl border border-gray-800" id="my-role-icon">
+                            ❓
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-gray-500">秘密角色</div>
+                            <div class="font-black text-base text-gray-400" id="my-role-name">尚未發牌</div>
+                        </div>
+                    </div>
+                    <div class="mt-3" id="role-skills-desc">
+                        <p class="text-xs text-gray-500 italic leading-relaxed">請進入房間並點擊開始遊戲。上帝分發身份卡後，您的專屬技能與說明將會在此顯示。</p>
+                    </div>
+                </div>
+
+                <!-- 行動與自爆控制按鈕區 -->
+                <div id="action-interaction" class="mt-4 border-t border-gray-800 pt-3 hidden">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold text-wolfGold flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-wolfGold animate-bounce"></i> 當前可執行行動
+                        </h4>
+                        <div id="wolf-detonate-zone" class="hidden">
+                            <!-- 狼人/白狼王自爆按鈕 -->
+                        </div>
+                    </div>
+                    <div id="interaction-controls" class="flex flex-col gap-2">
+                        <!-- 動態互動元件 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 中/右側欄：法官旁白、發言紀錄與控制大廳 -->
+        <section class="flex-1 flex flex-col gap-4">
+            
+            <!-- 初始聯網/單機大廳面板 -->
+            <div id="lobby-panel" class="bg-darkCard/90 border border-gray-800 rounded-xl p-6 shadow-2xl flex flex-col items-center justify-center text-center py-12">
+                <div class="w-20 h-20 bg-red-950/30 rounded-full flex items-center justify-center text-wolfRed text-4xl mb-4 border border-red-900/40">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h1 class="text-2xl font-black mb-2 text-white">「預女獵白狼王」AI 智能對決</h1>
+                <p class="text-gray-400 text-xs max-w-lg mb-6 leading-relaxed">
+                    本板子不競選警長，包含【白狼王】（白天自爆可帶走任意神職並強行天黑）、【女巫】（解藥用過後不再獲知死訊）、以及嚴格的【屠邊】勝負規則！
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-3 w-full max-w-md bg-gray-950 p-4 rounded-lg border border-gray-850">
+                    <div class="flex-1 flex flex-col items-start gap-1">
+                        <label class="text-[10px] text-gray-500 font-bold ml-1">您的玩家暱稱</label>
+                        <input type="text" id="input-username" value="邏輯大師" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-wolfRed text-white font-medium">
+                    </div>
+                    <div class="w-full sm:w-40 flex flex-col items-start gap-1">
+                        <label class="text-[10px] text-gray-500 font-bold ml-1">房間代碼 (選填)</label>
+                        <input type="text" id="input-room-code" placeholder="留空則單機" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-xs focus:outline-none focus:border-wolfBlue font-mono text-center tracking-widest text-white">
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col sm:flex-row gap-3 w-full max-w-md">
+                    <button id="btn-join-room" class="flex-1 bg-wolfBlue hover:bg-blue-600 active:translate-y-0.5 transition py-2.5 rounded font-bold flex items-center justify-center gap-2 text-xs shadow-lg shadow-blue-900/30">
+                        <i class="fa-solid fa-right-to-bracket"></i> 進入 / 創立房間
+                    </button>
+                    <button id="btn-start-game" disabled class="flex-1 bg-wolfRed hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed py-2.5 rounded font-bold flex items-center justify-center gap-2 text-xs shadow-lg shadow-red-900/20">
+                        <i class="fa-solid fa-skull-crossbones"></i> 開始發牌
+                    </button>
+                </div>
+            </div>
+
+            <!-- 實體遊戲運作主面板 -->
+            <div id="game-panel" class="bg-darkCard/90 border border-gray-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col hidden h-[620px]">
+                
+                <!-- 法官進程橫幅 -->
+                <div class="flex items-center justify-between border-b border-gray-850 pb-3 mb-3">
+                    <div class="flex items-center gap-3">
+                        <div id="phase-badge" class="bg-indigo-950 text-indigo-400 border border-indigo-900/50 px-2.5 py-1 rounded text-[10px] font-black tracking-wider uppercase">
+                            準備中
+                        </div>
+                        <span id="game-time-status" class="text-xs font-bold text-gray-300">正在確認身份...</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-next-step" class="bg-wolfGold text-gray-950 font-black hover:bg-yellow-500 text-xs px-4 py-1.5 rounded flex items-center gap-1 transition shadow-lg shadow-yellow-900/20">
+                            <span>法官執行下一步</span> <i class="fa-solid fa-angle-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 戰場實況（左日誌，右對話） -->
+                <div class="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 overflow-hidden">
+                    
+                    <!-- 法官公佈欄 (3/5 寬) -->
+                    <div class="md:col-span-3 bg-gray-950 rounded-lg border border-gray-850 p-3 flex flex-col overflow-hidden">
+                        <div class="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-2 flex justify-between items-center">
+                            <span><i class="fa-solid fa-gavel mr-1"></i> 上帝法官宣讀日誌</span>
+                            <button id="btn-clear-logs" class="text-[9px] text-gray-700 hover:text-gray-400 transition">清空日誌</button>
+                        </div>
+                        <div id="game-logs-container" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs text-gray-300">
+                            <div class="text-gray-600 italic">等待上帝法官就位...</div>
+                        </div>
+                    </div>
+
+                    <!-- 即時發言欄 (2/5 寬) -->
+                    <div class="md:col-span-2 bg-gray-950 rounded-lg border border-gray-850 p-3 flex flex-col overflow-hidden">
+                        <div class="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-2 flex justify-between items-center">
+                            <span><i class="fa-solid fa-bullhorn mr-1"></i> 玩家白天發言實錄</span>
+                        </div>
+                        <div id="speeches-container" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+                            <div class="text-gray-600 italic">白天發言將依隨機順序在此呈現...</div>
+                        </div>
+                        
+                        <!-- 手動發言輸入 -->
+                        <div class="mt-2 pt-2 border-t border-gray-850 flex gap-1.5">
+                            <input type="text" id="my-speech-input" placeholder="請在此輸入您的發言論述..." disabled class="flex-1 bg-gray-900 border border-gray-800 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-wolfRed disabled:opacity-40 disabled:cursor-not-allowed text-white font-medium">
+                            <button id="btn-send-speech" disabled class="bg-wolfRed hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed px-3 py-1.5 rounded text-xs font-bold transition">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 配置 Modal -->
+    <div id="config-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm hidden">
+        <div class="bg-darkCard border border-gray-800 rounded-xl p-5 w-full max-w-md shadow-2xl relative">
+            <button id="btn-close-config" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="text-lg font-black mb-3 text-wolfGold flex items-center gap-1.5">
+                <i class="fa-solid fa-sliders"></i> 系統配置中心
+            </h3>
+            <p class="text-xs text-gray-400 mb-4 leading-relaxed">
+                預裝配的 **Gemini API 金鑰** 與 **Firebase 實時聯機** 已直接寫入程式碼。若您有其他配置需要更換，亦可在下方輸入更換。
+            </p>
+
+            <!-- Gemini Key -->
+            <div class="mb-4">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Gemini API Key</label>
+                <input type="password" id="input-gemini-key" placeholder="AIzaSy..." class="w-full bg-gray-950 border border-gray-850 rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-wolfGold">
+                <span class="text-[9px] text-gray-500">API Key 將保存在您本地瀏覽器中，安全私密。</span>
+            </div>
+
+            <!-- Firebase Config -->
+            <div class="border-t border-gray-800 pt-3">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Firebase Config (JSON)</label>
+                <textarea id="input-firebase-config" rows="5" placeholder='{ "apiKey": "...", "projectId": "..." }' class="w-full bg-gray-950 border border-gray-850 rounded px-3 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-wolfBlue"></textarea>
+                <span class="text-[9px] text-gray-500">未設定時，將默認啟用本地單機模擬對決。</span>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <button id="btn-save-config" class="bg-wolfGold text-gray-950 font-black px-4 py-2 rounded text-xs transition glow-gold">
+                    儲存並重新載入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁腳 -->
+    <footer class="border-t border-gray-900 bg-gray-950/80 py-3 text-center text-[10px] text-gray-600">
+        AI 狼人殺 - 預女獵白狼王高階版 © 2026. Powered by Gemini 2.5 Flash.
+    </footer>
+
+    <!-- Firebase SDK 模組 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 核心安全憑證與預設配置嵌入 ---
+        const PRESET_GEMINI_KEY = "AIzaSyAL1_AI03QdhmS8PlueEHMJ6JlTeA5wAvQ";
+        const PRESET_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyCkQXwWBKm4jfNp0SHd9qS9d1nFCepLHYk",
+            authDomain: "werewolf-we.firebaseapp.com",
+            projectId: "werewolf-we",
+            storageBucket: "werewolf-we.firebasestorage.app",
+            messagingSenderId: "799589373062",
+            appId: "1:799589373062:web:00a9d787f672aa4e2d6d07",
+            measurementId: "G-NPYSF6MPFY"
+        };
+
+        let db = null;
+        let auth = null;
+        let firebaseEnabled = false;
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-werewolf-pro';
+
+        // 讀取本地 LocalStorage 緩存（若無則直接使用預設配置）
+        let localGeminiKey = localStorage.getItem("GEMINI_API_KEY") || PRESET_GEMINI_KEY;
+        let localFirebaseConfigStr = localStorage.getItem("FIREBASE_CONFIG") || JSON.stringify(PRESET_FIREBASE_CONFIG, null, 2);
+
+        document.getElementById("input-gemini-key").value = localGeminiKey;
+        document.getElementById("input-firebase-config").value = localFirebaseConfigStr;
+
+        // 初始化 Firebase
+        async function tryInitializeFirebase(configObj) {
+            if (!configObj || !configObj.apiKey) return false;
+            try {
+                const app = initializeApp(configObj);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                await signInAnonymously(auth);
+                
+                firebaseEnabled = true;
+                document.getElementById("connection-status").innerHTML = `
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-emerald-400">雲端連線房間中</span>
+                `;
+                document.getElementById("connection-status").className = "flex items-center gap-1.5 text-xs bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2.5 py-1 rounded-full";
+                return true;
+            } catch (err) {
+                console.error("Firebase Connect Error:", err);
+                return false;
+            }
+        }
+
+        let activeConfig = null;
+        try {
+            activeConfig = JSON.parse(localFirebaseConfigStr);
+        } catch (e) {
+            activeConfig = PRESET_FIREBASE_CONFIG;
+        }
+
+        if (activeConfig) {
+            await tryInitializeFirebase(activeConfig);
+        }
+
+        // --- 10人板子設定與人物池 ---
+        // 4狼 (3普通狼+1白狼王), 3神 (預+女+獵), 3民 (普通村民) = 10人
+        const ROLES_POOL = ["狼人", "狼人", "狼人", "白狼王", "預言家", "女巫", "獵人", "平民", "平民", "平民"];
+
+        const PERSONALITIES = [
+            "邏輯怪、發言完全以數理邏輯為準，語氣冰冷且喜歡抓漏洞。",
+            "暴躁型高玩、發言直白霸氣，被稍微踩一下就會瘋狂質疑對方是狼。",
+            "安靜低調的分析大師、說話條理分明，能在最後關頭揪出致命細節。",
+            "感性流直覺型玩家、喜歡用情感面及發言狀態判斷對方是不是好人。",
+            "資深老玩家、發言愛調侃、擅長做局、誘導白狼王自爆。"
+        ];
+
+        class Player {
+            constructor(id, name, isAI = true, role = null, personality = "") {
+                this.id = id;
+                this.name = name;
+                this.isAI = isAI;
+                this.role = role;
+                this.isAlive = true;
+                this.personality = personality || PERSONALITIES[id % PERSONALITIES.length];
+                this.voteFor = null;
+                this.deathType = null; // "WOLF_KILL", "POISON", "VOTE_BANISH", "WWK_EXPLODE", "HUNTER_SHOOT"
+                this.diedOnNight = null; // 記錄是在哪一晚死去的
+            }
+        }
+
+        // 核心狀態機數據
+        let gameState = {
+            roomCode: "",
+            isHost: true,
+            myId: 1,
+            phase: "LOBBY", // LOBBY, ROLE_REVEAL, NIGHT_ACTION, DAY_ANNOUNCE, DAY_DISCUSSION, DAY_VOTING, GAME_OVER, DAY_PK_VOTE
+            nightPhase: "CLOSED_EYES", // WEREWOLVES, SEER, WITCH
+            dayNum: 1,
+            players: [],
+            logs: [],
+            speeches: [],
+            werewolfTarget: null, // 昨晚狼人指殺目標
+            seerCheckResult: null,
+            witchSaveUsed: false,
+            witchPoisonUsed: false,
+            poisonTarget: null,
+            currentSpeakerIdx: 0,
+            speakerQueue: [], // 隨機發言順序
+            pkPlayers: [], // 平票 PK 玩家
+            pkVoters: [], // 除了 PK 玩家以外的其餘玩家
+            lastNightDeaths: [], // 昨晚死者名單
+            isActionComplete: false // 判斷玩家當前夜間行動是否已送出
+        };
+
+        // --- Gemini AI 調用 (帶退避重試與容錯) ---
+        async function fetchGemini(prompt, systemInstruction = "", retries = 5, delay = 1000) {
+            const userKey = document.getElementById("input-gemini-key").value.trim();
+            const apiKey = userKey || PRESET_GEMINI_KEY; 
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }]
+            };
+            if (systemInstruction) {
+                payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+            }
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        return result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                    }
+                    if (response.status === 400 || response.status === 403) {
+                        throw new Error("API 金鑰無效或受限，請配置右上角的自訂 Gemini API Key！");
+                    }
+                } catch (err) {
+                    if (i === retries - 1) {
+                        addLog(`[AI 通訊異常]: ${err.message}，已啟用備用邏輯。`, "text-red-500");
+                        throw err;
+                    }
+                }
+                await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+            }
+        }
+
+        // --- 輔助日誌宣讀 ---
+        function addLog(msg, styleClass = "text-gray-300") {
+            const container = document.getElementById("game-logs-container");
+            const time = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            container.innerHTML += `
+                <div class="py-1 border-b border-gray-900 ${styleClass}">
+                    <span class="text-gray-600 text-[10px] font-mono mr-1">[${time}]</span> ${msg}
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            gameState.logs.push(`[${time}] ${msg}`);
+            
+            if (firebaseEnabled && gameState.isHost && gameState.roomCode) {
+                syncGameStateToFirebase();
+            }
+        }
+
+        // --- 輔助玩家發言宣讀 ---
+        function addSpeech(playerId, playerName, text, isMe = false) {
+            const container = document.getElementById("speeches-container");
+            const colorClass = isMe ? "bg-wolfGold/10 border-wolfGold/30" : "bg-gray-900 border-gray-850";
+            const nameColor = isMe ? "text-wolfGold" : "text-wolfBlue";
+            
+            container.innerHTML += `
+                <div class="p-2.5 rounded border ${colorClass} space-y-1 transition duration-200">
+                    <div class="flex justify-between items-center text-[10px]">
+                        <span class="${nameColor} font-black">${playerId}號 【${playerName}】</span>
+                        <span class="text-gray-600">第 ${gameState.dayNum} 天白天</span>
+                    </div>
+                    <p class="text-gray-200 leading-relaxed text-xs">${text}</p>
+                </div>
+            `;
+            container.scrollTop = container.scrollHeight;
+            gameState.speeches.push({ playerId, playerName, text, day: gameState.dayNum });
+        }
+
+        // --- Firebase 同步 (聯機用) ---
+        async function syncGameStateToFirebase() {
+            if (!firebaseEnabled || !gameState.roomCode) return;
+            try {
+                // Rule 1: Strict Paths
+                const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', gameState.roomCode);
+                await setDoc(roomDocRef, {
+                    phase: gameState.phase,
+                    nightPhase: gameState.nightPhase,
+                    dayNum: gameState.dayNum,
+                    players: JSON.stringify(gameState.players),
+                    logs: gameState.logs,
+                    speeches: gameState.speeches,
+                    werewolfTarget: gameState.werewolfTarget || null,
+                    currentSpeakerIdx: gameState.currentSpeakerIdx,
+                    speakerQueue: gameState.speakerQueue,
+                    timestamp: Date.now()
+                }, { merge: true });
+            } catch (err) {
+                console.error("Sync Error:", err);
+            }
+        }
+
+        function setupFirebaseRoomListener(roomCode) {
+            if (!firebaseEnabled) return;
+            // Rule 1: Strict Paths
+            const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomCode);
+            onSnapshot(roomDocRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+                
+                if (!gameState.isHost) {
+                    gameState.phase = data.phase;
+                    gameState.nightPhase = data.nightPhase;
+                    gameState.dayNum = data.dayNum;
+                    gameState.currentSpeakerIdx = data.currentSpeakerIdx;
+                    gameState.speakerQueue = data.speakerQueue || [];
+                    gameState.werewolfTarget = data.werewolfTarget;
+                    
+                    if (data.players) {
+                        const parsed = JSON.parse(data.players);
+                        gameState.players = parsed.map(p => {
+                            const cp = new Player(p.id, p.name, p.isAI, p.role, p.personality);
+                            cp.isAlive = p.isAlive;
+                            cp.deathType = p.deathType;
+                            cp.diedOnNight = p.diedOnNight;
+                            return cp;
+                        });
+                    }
+                    if (data.logs) {
+                        const logsCont = document.getElementById("game-logs-container");
+                        logsCont.innerHTML = data.logs.map(log => `<div class="py-1 border-b border-gray-900 text-gray-300">${log}</div>`).join("");
+                        logsCont.scrollTop = logsCont.scrollHeight;
+                        gameState.logs = data.logs;
+                    }
+                    if (data.speeches) {
+                        const spCont = document.getElementById("speeches-container");
+                        spCont.innerHTML = data.speeches.map(sp => {
+                            const isMe = sp.playerId === gameState.myId;
+                            const colorClass = isMe ? "bg-wolfGold/10 border-wolfGold/30" : "bg-gray-900 border-gray-850";
+                            const nameColor = isMe ? "text-wolfGold" : "text-wolfBlue";
+                            return `
+                                <div class="p-2.5 rounded border ${colorClass} space-y-1">
+                                    <div class="flex justify-between items-center text-[10px]">
+                                        <span class="${nameColor} font-black">${sp.playerId}號 【${sp.playerName}】</span>
+                                        <span class="text-gray-600">第 ${sp.day} 天白天</span>
+                                    </div>
+                                    <p class="text-gray-200 leading-relaxed text-xs">${sp.text}</p>
+                                </div>
+                            `;
+                        }).join("");
+                        spCont.scrollTop = spCont.scrollHeight;
+                        gameState.speeches = data.speeches;
+                    }
+
+                    updateUIPerPhase();
+                    renderSeats();
+                    renderMyPrivateCard();
+                }
+            }, (error) => {
+                console.error("Firebase Room Snapshot Error:", error);
+            });
+        }
+
+        // --- 渲染 UI & 席位狀態 ---
+        function renderSeats() {
+            const container = document.getElementById("seats-container");
+            container.innerHTML = "";
+            
+            for (let i = 1; i <= 10; i++) {
+                const player = gameState.players.find(p => p.id === i);
+                if (player) {
+                    const isMe = player.id === gameState.myId;
+                    const isAlive = player.isAlive;
+                    const borderClass = isMe ? "border-wolfGold shadow-lg shadow-yellow-900/10" : "border-gray-800";
+                    const bgClass = isAlive ? "bg-gray-900/90" : "bg-gray-950 opacity-40";
+                    const nameColor = isMe ? "text-wolfGold font-black" : "text-gray-200 font-bold";
+                    
+                    // 標記目前正在發言的玩家
+                    const isSpeaking = gameState.phase === "DAY_DISCUSSION" && 
+                        gameState.speakerQueue[gameState.currentSpeakerIdx] === player.id;
+
+                    container.innerHTML += `
+                        <div class="border ${borderClass} ${bgClass} rounded-lg p-2.5 flex flex-col justify-between h-24 relative transition hover:border-gray-700">
+                            <div class="flex justify-between items-center">
+                                <span class="bg-gray-800 text-[9px] px-1.5 py-0.5 rounded font-mono text-gray-400">#${player.id}</span>
+                                ${isAlive ? 
+                                    `<span class="text-[9px] bg-emerald-950 text-emerald-400 px-1 rounded font-bold">存活</span>` : 
+                                    `<span class="text-[9px] bg-red-950/80 text-red-500 px-1 rounded line-through font-bold">死亡 (${player.deathType === "POISON" ? "悶槍" : player.role})</span>`
+                                }
+                            </div>
+                            <div class="my-1 flex items-center gap-1 overflow-hidden">
+                                <span class="text-sm">${player.isAI ? '🤖' : '👤'}</span>
+                                <span class="text-xs truncate ${nameColor}">${player.name}</span>
+                            </div>
+                            <div class="text-[9px] text-gray-500 truncate">
+                                ${isMe ? `<span class="text-wolfGold font-bold">我 (${player.role || '未發牌'})</span>` : (player.isAI ? `AI: ${player.personality.substring(0, 8)}...` : '玩家')}
+                            </div>
+                            ${isSpeaking ? `<div class="absolute -top-1 -right-1 bg-wolfRed text-white text-[9px] px-1.5 py-0.5 rounded-full animate-bounce font-black">發言中</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <div class="border border-dashed border-gray-800 bg-gray-950/30 rounded-lg p-2.5 flex flex-col items-center justify-center h-24 text-gray-650">
+                            <span class="text-[10px] font-mono mb-1">#${i} 空席</span>
+                            <i class="fa-solid fa-chair text-sm opacity-40"></i>
+                        </div>
+                    `;
+                }
+            }
+            document.getElementById("player-count").innerText = `${gameState.players.length} / 10 已就座`;
+        }
+
+        function renderMyPrivateCard() {
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            if (!me) return;
+
+            document.getElementById("private-panel").classList.remove("hidden");
+            document.getElementById("my-role-name").innerText = me.role || "正在分配...";
+            
+            const iconEl = document.getElementById("my-role-icon");
+            const descEl = document.getElementById("role-skills-desc");
+            
+            if (me.role === "狼人") {
+                iconEl.innerText = "🐺";
+                iconEl.className = "w-12 h-12 rounded-full bg-red-950 text-wolfRed flex items-center justify-center text-2xl border border-red-900";
+                descEl.innerHTML = `
+                    <div class="text-xs text-red-400 font-bold mb-1">🐺 普通狼人技能 (黑夜指殺、白天自爆)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        與狼人同夥（含白狼王）於黑夜指殺一名玩家。白天發言階段您可選擇【自爆】，這會使當天白天強行中止，直接強行進入黑夜（但不可帶人）。
+                    </p>
+                `;
+            } else if (me.role === "白狼王") {
+                iconEl.innerText = "👑";
+                iconEl.className = "w-12 h-12 rounded-full bg-red-950 text-red-500 flex items-center justify-center text-2xl border border-red-850 animate-pulse";
+                descEl.innerHTML = `
+                    <div class="text-xs text-red-400 font-bold mb-1">🐺 白狼王特權 (自爆帶人、強行天黑)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        可在白天發言階段隨時選擇【自爆並帶走一員】，被帶走者（即使是獵人）會被**「悶槍」**無法發動任何技能。隨後當天直接天黑。
+                    </p>
+                `;
+            } else if (me.role === "預言家") {
+                iconEl.innerText = "🔮";
+                iconEl.className = "w-12 h-12 rounded-full bg-violet-950 text-violet-400 flex items-center justify-center text-2xl border border-violet-900";
+                descEl.innerHTML = `
+                    <div class="text-xs text-violet-400 font-bold mb-1">🔮 預言家查驗 (好人/狼人)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        每晚可挑選一名在座玩家查驗陣營。法官只會告知對方是【好人】還是【狼人】。
+                    </p>
+                `;
+            } else if (me.role === "女巫") {
+                iconEl.innerText = "🧪";
+                iconEl.className = "w-12 h-12 rounded-full bg-emerald-950 text-emerald-400 flex items-center justify-center text-2xl border border-emerald-900";
+                descEl.innerHTML = `
+                    <div class="text-xs text-emerald-400 font-bold mb-1">🧪 女巫雙藥 (雙藥不可同晚使用)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        擁有解藥與毒藥。第一晚可自救。**一旦解藥使用後，後續夜晚將不能再獲知當夜死者資訊。**被毒死的玩家直接「悶槍」且無遺言。
+                    </p>
+                `;
+            } else if (me.role === "獵人") {
+                iconEl.innerText = "🏹";
+                iconEl.className = "w-12 h-12 rounded-full bg-amber-950 text-amber-500 flex items-center justify-center text-2xl border border-amber-900";
+                descEl.innerHTML = `
+                    <div class="text-xs text-amber-400 font-bold mb-1">🏹 獵人死後反擊 (防備毒藥/自爆悶槍)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        死於夜間狼人指殺、或白天被投票放逐時，可翻牌開槍帶走一人。但若**死於女巫毒藥**、或被**白狼王自爆帶走**，則會「悶槍」無法開槍！
+                    </p>
+                `;
+            } else if (me.role === "平民") {
+                iconEl.innerText = "🧑‍🌾";
+                iconEl.className = "w-12 h-12 rounded-full bg-gray-900 text-gray-300 flex items-center justify-center text-2xl border border-gray-850";
+                descEl.innerHTML = `
+                    <div class="text-xs text-gray-400 font-bold mb-1">🧑‍🌾 普通村民 (閉眼、靠邏輯投票)</div>
+                    <p class="text-[11px] text-gray-400 leading-relaxed">
+                        無特殊夜間技能。請利用白天的發言環節，找出言詞破綻、洗清嫌疑，並團結好人票將狼人公投放逐。
+                    </p>
+                `;
+            }
+        }
+
+        // --- 房廳初始 ---
+        function initLocalRoom() {
+            gameState.players = [];
+            const myName = document.getElementById("input-username").value.trim() || "邏輯高玩";
+            
+            // 我本人 (座位 #1)
+            gameState.players.push(new Player(1, myName, false));
+            
+            // 9 個大模型 AI
+            const aiNames = ["阿爾法", "貝塔", "墨菲", "泰坦", "幻影", "尤達", "愛麗絲", "卡倫", "零號"];
+            for (let i = 2; i <= 10; i++) {
+                gameState.players.push(new Player(i, `AI_${aiNames[i-2]}`, true));
+            }
+            
+            gameState.myId = 1;
+            gameState.isHost = true;
+            gameState.phase = "LOBBY";
+            
+            renderSeats();
+            document.getElementById("btn-start-game").disabled = false;
+            addLog("單人本地 AI 狼人殺挑戰大廳已就緒。可點擊發牌開始！", "text-wolfGold font-bold");
+        }
+
+        // --- 開始遊戲分發 ---
+        function startGame() {
+            addLog("🔮 上帝法官洗牌中... 分發「預女獵白狼王」配置...", "text-indigo-400 font-bold");
+            
+            // 隨機打亂角色池
+            const shuffled = [...ROLES_POOL].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < 10; i++) {
+                gameState.players[i].role = shuffled[i];
+                gameState.players[i].isAlive = true;
+                gameState.players[i].deathType = null;
+                gameState.players[i].diedOnNight = null;
+            }
+
+            gameState.dayNum = 1;
+            gameState.phase = "ROLE_REVEAL";
+            gameState.witchSaveUsed = false;
+            gameState.witchPoisonUsed = false;
+            gameState.werewolfTarget = null;
+            gameState.poisonTarget = null;
+            
+            document.getElementById("lobby-panel").classList.add("hidden");
+            document.getElementById("game-panel").classList.remove("hidden");
+            
+            addLog("✨ 洗牌發牌完畢，各個玩家已秘密查驗了自己的卡片！", "text-indigo-300");
+            addLog("準備完畢後，請點擊上方【法官執行下一步】天黑閉眼...", "text-wolfGold animate-pulse");
+
+            renderSeats();
+            renderMyPrivateCard();
+            updateUIPerPhase();
+
+            if (firebaseEnabled && gameState.roomCode && gameState.isHost) {
+                syncGameStateToFirebase();
+            }
+        }
+
+        // --- 根據當前 Phase 渲染 UI 與玩家夜間/白天控制 ---
+        function updateUIPerPhase() {
+            const badge = document.getElementById("phase-badge");
+            const timeStatus = document.getElementById("game-time-status");
+            const btnNext = document.getElementById("btn-next-step");
+
+            if (gameState.isHost) {
+                btnNext.classList.remove("hidden");
+            } else {
+                btnNext.classList.add("hidden");
+            }
+
+            // 控制白天狼人/白狼王自爆按鈕顯示
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            const detonateZone = document.getElementById("wolf-detonate-zone");
+            if (me && me.isAlive && (me.role === "狼人" || me.role === "白狼王") && gameState.phase === "DAY_DISCUSSION") {
+                detonateZone.classList.remove("hidden");
+                detonateZone.innerHTML = `
+                    <button id="btn-self-detonate" class="bg-red-700 hover:bg-red-600 text-white font-black px-2 py-1 rounded text-[10px] transition shadow">
+                        💥 自爆 (中止白天)
+                    </button>
+                `;
+                document.getElementById("btn-self-detonate").onclick = () => handleSelfDetonation(me.id);
+            } else {
+                detonateZone.classList.add("hidden");
+            }
+
+            switch(gameState.phase) {
+                case "ROLE_REVEAL":
+                    badge.innerText = "發牌階段";
+                    badge.className = "bg-gray-800 text-gray-300 border border-gray-700 px-2.5 py-1 rounded text-[10px] font-bold";
+                    timeStatus.innerText = "請熟記您的角色與特權技能！";
+                    break;
+                case "NIGHT_ACTION":
+                    badge.innerText = "黑夜階段";
+                    badge.className = "bg-indigo-950 text-indigo-400 border border-indigo-900/50 px-2.5 py-1 rounded text-[10px] font-bold animate-pulse";
+                    
+                    if (gameState.nightPhase === "WEREWOLVES") {
+                        timeStatus.innerText = `🌑 第 ${gameState.dayNum} 晚，狼人指殺行動中...`;
+                        renderNightControls();
+                    } else if (gameState.nightPhase === "SEER") {
+                        timeStatus.innerText = `🔮 第 ${gameState.dayNum} 晚，預言家驗人行動中...`;
+                        renderNightControls();
+                    } else if (gameState.nightPhase === "WITCH") {
+                        timeStatus.innerText = `🧪 第 ${gameState.dayNum} 晚，女巫藥劑調配中...`;
+                        renderNightControls();
+                    }
+                    break;
+                case "DAY_ANNOUNCE":
+                    badge.innerText = "天亮黎明";
+                    badge.className = "bg-amber-950 text-amber-500 border border-amber-900/50 px-2.5 py-1 rounded text-[10px] font-bold";
+                    timeStatus.innerText = `第 ${gameState.dayNum} 天 太陽緩緩升起...`;
+                    document.getElementById("interaction-controls").innerHTML = "";
+                    break;
+                case "DAY_DISCUSSION":
+                    badge.innerText = "發言辯論";
+                    badge.className = "bg-sky-950 text-sky-400 border border-sky-900/50 px-2.5 py-1 rounded text-[10px] font-bold";
+                    const currentSpeakerId = gameState.speakerQueue[gameState.currentSpeakerIdx];
+                    const speaker = gameState.players.find(p => p.id === currentSpeakerId);
+                    timeStatus.innerText = `輪到 #${currentSpeakerId} 【${speaker?.name}】發表論點`;
+                    renderDayDiscussionControls();
+                    break;
+                case "DAY_VOTING":
+                    badge.innerText = "公投放逐";
+                    badge.className = "bg-rose-950 text-rose-400 border border-rose-900/50 px-2.5 py-1 rounded text-[10px] font-bold";
+                    timeStatus.innerText = "請公開投票，得票最多者將被驅逐！";
+                    renderVotingControls();
+                    break;
+                case "DAY_PK_VOTE":
+                    badge.innerText = "平票PK投票";
+                    badge.className = "bg-amber-950 text-wolfGold border border-amber-900/50 px-2.5 py-1 rounded text-[10px] font-bold animate-pulse";
+                    timeStatus.innerText = `PK名單: ${gameState.pkPlayers.join(", ")} 號。其餘人進行公投！`;
+                    renderPKVotingControls();
+                    break;
+                case "GAME_OVER":
+                    badge.innerText = "局終結算";
+                    badge.className = "bg-emerald-950 text-emerald-400 border border-emerald-900/50 px-2.5 py-1 rounded text-[10px] font-bold";
+                    timeStatus.innerText = "遊戲已分勝負，塵埃落定。";
+                    document.getElementById("interaction-controls").innerHTML = `
+                        <button onclick="window.location.reload()" class="w-full bg-wolfBlue hover:bg-blue-600 text-white font-black py-2 rounded text-xs transition">
+                            開啟下一局高難度對決
+                        </button>
+                    `;
+                    break;
+            }
+        }
+
+        // --- 夜間真人玩家特權交互界面 ---
+        function renderNightControls() {
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            const container = document.getElementById("interaction-controls");
+            document.getElementById("action-interaction").classList.remove("hidden");
+
+            if (!me || !me.isAlive) {
+                container.innerHTML = `<p class="text-xs text-red-500 italic">您已被淘汰，請靜觀局勢發展。</p>`;
+                return;
+            }
+
+            // 1. 狼人
+            if (gameState.nightPhase === "WEREWOLVES") {
+                if (me.role === "狼人" || me.role === "白狼王") {
+                    container.innerHTML = `
+                        <p class="text-[11px] text-gray-400 mb-1">請與同夥選擇今夜指殺目標：</p>
+                        <select id="sel-kill" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                            ${gameState.players.filter(p => p.isAlive).map(p => `<option value="${p.id}">#${p.id} ${p.name} ${p.id === me.id ? '(自刀)' : ''}</option>`).join("")}
+                        </select>
+                        <button id="btn-submit-kill" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-1.5 rounded text-xs mt-2 transition">
+                            確認指殺目標
+                        </button>
+                    `;
+                    document.getElementById("btn-submit-kill").onclick = () => {
+                        const target = parseInt(document.getElementById("sel-kill").value);
+                        gameState.werewolfTarget = target;
+                        addLog(`您已提交指殺 #${target} 號玩家的請求。`, "text-red-400");
+                        container.innerHTML = `<p class="text-xs text-emerald-400">殺害指令已向法官傳遞。</p>`;
+                    };
+                } else {
+                    container.innerHTML = `<p class="text-xs text-gray-500 italic">天黑請閉眼，野狼正在村落中獵食...</p>`;
+                }
+            }
+            // 2. 預言家
+            else if (gameState.nightPhase === "SEER") {
+                if (me.role === "預言家") {
+                    container.innerHTML = `
+                        <p class="text-[11px] text-gray-400 mb-1">請選擇一名您要查驗靈魂的玩家：</p>
+                        <select id="sel-check" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                            ${gameState.players.filter(p => p.isAlive && p.id !== me.id).map(p => `<option value="${p.id}">#${p.id} ${p.name}</option>`).join("")}
+                        </select>
+                        <button id="btn-submit-check" class="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-1.5 rounded text-xs mt-2 transition">
+                            洞查陣營
+                        </button>
+                    `;
+                    document.getElementById("btn-submit-check").onclick = () => {
+                        const target = parseInt(document.getElementById("sel-check").value);
+                        const targetPlayer = gameState.players.find(p => p.id === target);
+                        const isWolf = (targetPlayer.role === "狼人" || targetPlayer.role === "白狼王");
+                        gameState.seerCheckResult = isWolf ? "狼人陣營" : "好人陣營";
+                        
+                        addLog(`🔮 預言家查驗結果：#${target} 號玩家為【${gameState.seerCheckResult}】。`, "text-violet-400 font-bold");
+                        container.innerHTML = `<p class="text-xs text-violet-400 font-bold">查驗結果：#${target} 號玩家為 ${gameState.seerCheckResult}</p>`;
+                    };
+                } else {
+                    container.innerHTML = `<p class="text-xs text-gray-500 italic">天黑請閉眼，預言家正在查驗靈魂...</p>`;
+                }
+            }
+            // 3. 女巫
+            else if (gameState.nightPhase === "WITCH") {
+                if (me.role === "女巫") {
+                    const victim = gameState.werewolfTarget;
+                    
+                    // 規則判定：解藥已用過，後續夜晚不再得知死亡訊息
+                    let victimDisplay = "未知";
+                    if (!gameState.witchSaveUsed) {
+                        victimDisplay = victim ? `#${victim} 號` : "無人傷亡";
+                    } else {
+                        victimDisplay = "因解藥已用完，法官不再向您宣告被殺玩家";
+                    }
+
+                    let witchHtml = `<div class="space-y-2">
+                        <p class="text-[11px] text-gray-400">今夜被害者：<span class="text-wolfRed font-bold">${victimDisplay}</span></p>
+                    `;
+
+                    // 解藥自救/救人
+                    if (!gameState.witchSaveUsed && victim) {
+                        // 規則判定：第一晚女巫可以自救
+                        if (gameState.dayNum === 1 || victim !== me.id) {
+                            witchHtml += `
+                                <button id="btn-witch-save" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 rounded text-xs transition">
+                                    使用解藥救活被殺者
+                                </button>
+                            `;
+                        } else {
+                            witchHtml += `<p class="text-[10px] text-red-500">（自救特權已於首夜過後失效）</p>`;
+                        }
+                    }
+
+                    // 毒藥
+                    if (!gameState.witchPoisonUsed) {
+                        witchHtml += `
+                            <p class="text-[11px] text-gray-400 mt-2">潑灑毒藥選項（每晚限用一瓶藥）：</p>
+                            <select id="sel-poison" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                                <option value="0">不潑灑毒藥</option>
+                                ${gameState.players.filter(p => p.isAlive && p.id !== me.id).map(p => `<option value="${p.id}">#${p.id} ${p.name}</option>`).join("")}
+                            </select>
+                            <button id="btn-witch-poison" class="w-full bg-rose-700 hover:bg-rose-600 text-white font-bold py-1.5 rounded text-xs mt-1 transition">
+                                確認使用毒藥
+                            </button>
+                        `;
+                    } else {
+                        witchHtml += `<p class="text-[10px] text-gray-500 italic">（毒藥藥劑已被消耗）</p>`;
+                    }
+
+                    witchHtml += `</div>`;
+                    container.innerHTML = witchHtml;
+
+                    const saveBtn = document.getElementById("btn-witch-save");
+                    if (saveBtn) {
+                        saveBtn.onclick = () => {
+                            gameState.werewolfTarget = null; // 救活
+                            gameState.witchSaveUsed = true;
+                            addLog("您施展了解藥，強行挽救了該生命。", "text-emerald-400 font-bold");
+                            container.innerHTML = `<p class="text-xs text-emerald-400">已成功對被指殺者施放解藥。</p>`;
+                        };
+                    }
+
+                    const poisonBtn = document.getElementById("btn-witch-poison");
+                    if (poisonBtn) {
+                        poisonBtn.onclick = () => {
+                            const target = parseInt(document.getElementById("sel-poison").value);
+                            if (target > 0) {
+                                gameState.poisonTarget = target;
+                                gameState.witchPoisonUsed = true;
+                                addLog(`您向 #${target} 號玩家潑灑了毒藥。`, "text-rose-400 font-bold");
+                            }
+                            container.innerHTML = `<p class="text-xs text-rose-400">毒殺命令已提交。</p>`;
+                        };
+                    }
+
+                } else {
+                    container.innerHTML = `<p class="text-xs text-gray-500 italic">天黑請閉眼，女巫正在權衡藥水調配...</p>`;
+                }
+            }
+        }
+
+        // --- 白天發言階段界面 ---
+        function renderDayDiscussionControls() {
+            const currentSpeakerId = gameState.speakerQueue[gameState.currentSpeakerIdx];
+            const container = document.getElementById("interaction-controls");
+            document.getElementById("action-interaction").classList.remove("hidden");
+
+            if (currentSpeakerId === gameState.myId) {
+                // 輪到玩家發言
+                container.innerHTML = `
+                    <p class="text-xs text-wolfGold font-black animate-pulse flex items-center gap-1">
+                        <i class="fa-solid fa-microphone"></i> 輪到您的公開發言時間！
+                    </p>
+                    <p class="text-[10px] text-gray-500 mt-1">請直接在右下方輸入框打字發言，或者讓 AI 助手替您起草發言：</p>
+                    <button id="btn-ai-speech-helper" class="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-bold py-1.5 rounded text-xs mt-2 flex items-center justify-center gap-1 transition">
+                        <i class="fa-solid fa-wand-magic-sparkles text-wolfGold animate-spin"></i> 幫我撰寫繁體中文高階發言
+                    </button>
+                `;
+
+                document.getElementById("my-speech-input").disabled = false;
+                document.getElementById("btn-send-speech").disabled = false;
+
+                document.getElementById("btn-ai-speech-helper").onclick = async () => {
+                    const btn = document.getElementById("btn-ai-speech-helper");
+                    btn.disabled = true;
+                    btn.innerText = "⚡ 正在根據局勢邏輯推演中...";
+                    
+                    const response = await generateAISpeechText(gameState.myId);
+                    document.getElementById("my-speech-input").value = response;
+                    
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-wolfGold"></i> 幫我撰寫繁體中文高階發言`;
+                };
+            } else {
+                // 觀摩他人發言
+                const speaker = gameState.players.find(p => p.id === currentSpeakerId);
+                container.innerHTML = `
+                    <p class="text-xs text-gray-400">正在傾聽 #${currentSpeakerId} 【${speaker?.name}】的陳述...</p>
+                    ${speaker?.isAI ? `<div class="mt-1 text-[10px] text-gray-500 animate-pulse flex items-center gap-1"><i class="fa-solid fa-brain text-wolfBlue"></i> AI 正在深入揣摩全場局勢、組織發言中...</div>` : ''}
+                `;
+                document.getElementById("my-speech-input").disabled = true;
+                document.getElementById("btn-send-speech").disabled = true;
+            }
+        }
+
+        // --- 投票控制面板 (普通白天) ---
+        function renderVotingControls() {
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            const container = document.getElementById("interaction-controls");
+            document.getElementById("action-interaction").classList.remove("hidden");
+
+            if (!me || !me.isAlive) {
+                container.innerHTML = `<p class="text-xs text-red-500 italic">您已被淘汰，無權參與投票。</p>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <p class="text-xs text-gray-400 mb-1.5">請指控並公投放逐一位嫌疑玩家：</p>
+                <select id="sel-vote" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                    <option value="0">棄票 (保持觀望)</option>
+                    ${gameState.players.filter(p => p.isAlive && p.id !== me.id).map(p => `<option value="${p.id}">#${p.id} ${p.name}</option>`).join("")}
+                </select>
+                <button id="btn-submit-vote" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-1.5 rounded text-xs mt-2 transition">
+                    確定指控選票
+                </button>
+            `;
+
+            document.getElementById("btn-submit-vote").onclick = () => {
+                const target = parseInt(document.getElementById("sel-vote").value);
+                me.voteFor = target;
+                if (target === 0) {
+                    addLog("您今天選擇了【棄票】。", "text-gray-400");
+                } else {
+                    addLog(`您投票指控 #${target} 號玩家，力圖放逐他。`, "text-rose-400");
+                }
+                container.innerHTML = `<p class="text-xs text-emerald-400">您的神聖選票已投入投票箱。</p>`;
+            };
+        }
+
+        // --- 投票控制面板 (平票 PK) ---
+        function renderPKVotingControls() {
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            const container = document.getElementById("interaction-controls");
+            document.getElementById("action-interaction").classList.remove("hidden");
+
+            if (!me || !me.isAlive) {
+                container.innerHTML = `<p class="text-xs text-red-500">已淘汰，無法投票。</p>`;
+                return;
+            }
+
+            // PK 玩家本人無權在此投票
+            if (gameState.pkPlayers.includes(me.id)) {
+                container.innerHTML = `<p class="text-xs text-wolfGold font-bold animate-pulse">您為平票PK對象，此時無法參與投票，請等待審判。</p>`;
+                return;
+            }
+
+            container.innerHTML = `
+                <p class="text-xs text-gray-400 mb-1.5">請在 PK 名單中投票決定放逐誰：</p>
+                <select id="sel-pk-vote" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white">
+                    <option value="0">棄票</option>
+                    ${gameState.players.filter(p => gameState.pkPlayers.includes(p.id) && p.isAlive).map(p => `<option value="${p.id}">#${p.id} ${p.name}</option>`).join("")}
+                </select>
+                <button id="btn-submit-pk-vote" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-1.5 rounded text-xs mt-2 transition">
+                    確定PK選票
+                </button>
+            `;
+
+            document.getElementById("btn-submit-pk-vote").onclick = () => {
+                const target = parseInt(document.getElementById("sel-pk-vote").value);
+                me.voteFor = target;
+                if (target === 0) {
+                    addLog("您在PK環節中選擇了【棄票】。", "text-gray-400");
+                } else {
+                    addLog(`您在PK投票中，投給了 #${target} 號玩家。`, "text-amber-500");
+                }
+                container.innerHTML = `<p class="text-xs text-emerald-400">您的PK選票已鎖定。</p>`;
+            };
+        }
+
+        // --- 核心：AI 智能提示詞 (Prompts) 與發言/決策生成 ---
+        
+        async function generateAISpeechText(playerId) {
+            const player = gameState.players.find(p => p.id === playerId);
+            if (!player) return "";
+
+            const aliveList = gameState.players.filter(p => p.isAlive).map(p => `#${p.id}(${p.name})`).join(", ");
+            const recentLogs = gameState.logs.slice(-10).join("\n");
+            
+            let privateGuide = "";
+            if (player.role === "狼人" || player.role === "白狼王") {
+                const teammates = gameState.players.filter(p => (p.role === "狼人" || p.role === "白狼王") && p.id !== player.id).map(p => `#${p.id}`).join(", ");
+                privateGuide = `你是狼人陣營【${player.role}】，隊友為：${teammates || "無"}。請認真偽裝好人！你可以起跳預言家報假驗人（給隊友金水、或給好人查殺），引導大家放逐真正的好人（特別是預言家、女巫、獵人等）。`;
+            } else if (player.role === "預言家") {
+                privateGuide = `你是尊貴的【預言家】。你掌握關鍵真實驗人結果。如果昨晚有驗出狼人（查殺）或好人（金水），請在合適時機直接起跳，公佈資訊並給出邏輯。`;
+            } else if (player.role === "女巫") {
+                privateGuide = `你是掌握生殺大權的【女巫】。如果你使用了藥劑（毒了人或救了人），可以在白天的發言中適當透露或藏身保護好人。`;
+            } else {
+                privateGuide = `你是好人陣營的【${player.role}】。請根據前面的發言分析出誰是狼，注意白狼王的自爆威脅，保護好預言家與神職。`;
+            }
+
+            const prompt = `
+您正在參與一個極限考驗邏輯與心理的10人制狼人殺（板子：預言家、女巫、獵人、白狼王、3狼、3民、無警長）。
+- 當前天數：第 ${gameState.dayNum} 天白天
+- 您的座位：#${player.id} 【${player.name}】
+- 您的秘密身份：【${player.role}】
+- 您的性格風格：${player.personality}
+- 場上存活名單：[${aliveList}]
+- 最近發言與法官日誌情境：
+${recentLogs}
+
+【您的角色指令】：
+${privateGuide}
+
+【任務要求】：
+請完全化身為該角色，撰寫一段符合人設的發言。
+1. 一律使用「繁體中文（Traditional Chinese）」。
+2. 切勿透露任何與 AI 或大模型相關的語句。
+3. 發言簡潔精煉，控制在 100-140 字內，具有說服力、心理博弈、邏輯分析，並明確點出你懷疑或支持誰。
+`;
+
+            const systemPrompt = "你是一位精通狼人殺（Lyingman/Werewolf）的高階邏輯大師。你的發言語調極其自然擬真、邏輯縝密，具備極強的心理戰術與說服力。一律使用繁體中文。";
+            
+            try {
+                const response = await fetchGemini(prompt, systemPrompt);
+                return response.replace(/["'「」]/g, "").trim();
+            } catch (e) {
+                return "今天局勢很撲朔迷離，我傾向多聽聽後面的發言來做邏輯歸票。過！";
+            }
+        }
+
+        // AI 決定夜晚行動
+        async function getAINightDecision(playerId, type) {
+            const player = gameState.players.find(p => p.id === playerId);
+            const aliveOpponents = gameState.players.filter(p => p.isAlive && p.id !== playerId);
+            const targetsStr = aliveOpponents.map(p => `#${p.id}`).join(", ");
+
+            let subPrompt = "";
+            if (type === "KILL") {
+                subPrompt = `你是【狼人】，今晚要指殺一人。請從 [${targetsStr}] 中選擇最可能像神職（或對狼人威脅最大）的人刺殺。`;
+            } else if (type === "CHECK") {
+                subPrompt = `你是【預言家】，今晚要驗一個人的身份。請從 [${targetsStr}] 中選擇。`;
+            } else if (type === "WITCH") {
+                const victim = gameState.werewolfTarget;
+                subPrompt = `你是【女巫】。昨晚被狼人指殺者是 #${victim}。你有一瓶解藥和毒藥。決定今晚是否使用解藥挽救，或對 [${targetsStr}] 使用毒藥。`;
+            }
+
+            const prompt = `
+根據局勢做出決策：
+- 存活玩家：[${targetsStr}]
+- 您的身份：${player.role}
+- 您的決策指令：${subPrompt}
+
+請僅返回一條 JSON 格式（不要有額外的 Markdown 標籤或文字），格式範例：
+{"targetId": 3, "reason": "分析原因", "useSave": true}
+若為女巫不進行毒殺，targetId 請設定為 0。
+`;
+
+            try {
+                const text = await fetchGemini(prompt, "You are a professional game AI.");
+                const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
+                return JSON.parse(clean);
+            } catch (e) {
+                // 兜底隨機
+                if (aliveOpponents.length > 0) {
+                    return { targetId: aliveOpponents[0].id, reason: "兜底隨機行動", useSave: false };
+                }
+                return { targetId: 0, reason: "不行動", useSave: false };
+            }
+        }
+
+        // AI 決定白天公投/PK選票
+        async function getAIVoteDecision(playerId, isPk = false) {
+            const player = gameState.players.find(p => p.id === playerId);
+            const candidates = isPk ? 
+                gameState.players.filter(p => gameState.pkPlayers.includes(p.id) && p.isAlive) :
+                gameState.players.filter(p => p.isAlive && p.id !== playerId);
+
+            const opponentList = candidates.map(o => `#${o.id}(${o.name})`).join(", ");
+            const recentSpeech = gameState.speeches.map(s => `#${s.playerId}: "${s.text}"`).join("\n");
+
+            const prompt = `
+【公投決策】
+你是 ${player.id} 號玩家（身份：${player.role}，性格：${player.personality}）。
+請根據下面的白天發言記錄，並選擇你要投票放逐哪一位玩家（或者回傳0棄票）。
+【近期發言】：
+${recentSpeech}
+
+可指控放逐的候選名單：[${opponentList}]
+(若是 PK 投票，您只能投給候選人之一，否則算作棄票回傳0)
+
+請僅回傳一條純 JSON 物件（不要包含 markdown）：
+{"voteTargetId": 3, "reason": "決定邏輯"}
+`;
+
+            try {
+                const text = await fetchGemini(prompt, "You are a strategic table-top game player.");
+                const clean = text.replace(/```json/g, "").replace(/```/g, "").trim();
+                const obj = JSON.parse(clean);
+                return parseInt(obj.voteTargetId) || 0;
+            } catch (e) {
+                if (candidates.length > 0) {
+                    return candidates[0].id;
+                }
+                return 0;
+            }
+        }
+
+
+        // --- 核心自爆與獵人開槍輔助函數 ---
+
+        async function handleSelfDetonation(wolfId) {
+            const wolf = gameState.players.find(p => p.id === wolfId);
+            if (!wolf || !wolf.isAlive) return;
+
+            addLog(`💥 【玩家自爆】: #${wolf.id} 號【${wolf.name}】拍桌宣布自爆！`, "text-red-500 font-extrabold text-sm");
+            wolf.isAlive = false;
+            wolf.deathType = "WOLF_EXPLODE";
+
+            if (wolf.role === "白狼王") {
+                // 白狼王特權：強行帶走一員（被帶走者悶槍）
+                // 優先選擇神職 AI
+                const gods = gameState.players.filter(p => p.isAlive && (p.role === "預言家" || p.role === "女巫" || p.role === "獵人"));
+                const targets = gods.length > 0 ? gods : gameState.players.filter(p => p.isAlive && p.id !== wolfId);
+                
+                if (targets.length > 0) {
+                    const victim = targets[0]; // 帶走優先神職
+                    victim.isAlive = false;
+                    victim.deathType = "WWK_EXPLODE"; // 標記為被白狼王帶走，悶槍！
+                    addLog(`💀 白狼王自爆利刃指向：#${victim.id} 號【${victim.name}】直接雙雙出局！`, "text-red-500 font-bold");
+                    addLog(`⚠️ #${victim.id} 號（${victim.role}）被白狼王帶走，無法發動任何技能！`, "text-gray-500 font-bold");
+                }
+            } else {
+                addLog(`普通狼人自爆，不帶人，直接中斷白天。`, "text-gray-400");
+            }
+
+            // 直接中止白天，進入黑夜
+            gameState.phase = "NIGHT_ACTION";
+            gameState.nightPhase = "WEREWOLVES";
+            gameState.dayNum++;
+            
+            addLog("🌑 夜幕被強制提前拉下。天黑請閉眼，狼人請睜眼...", "text-indigo-400 font-bold");
+            
+            renderSeats();
+            updateUIPerPhase();
+            
+            if (firebaseEnabled && gameState.roomCode && gameState.isHost) {
+                syncGameStateToFirebase();
+            }
+        }
+
+        // 觸發獵人開槍射擊
+        function triggerHunterShoot(hunterId) {
+            const hunter = gameState.players.find(p => p.id === hunterId);
+            if (!hunter) return;
+
+            addLog(`🏹 獵人 #${hunter.id} 號宣告翻牌，扣動板機進行死後反擊！`, "text-amber-500 font-bold");
+
+            // 尋找活著的狼人
+            const wolves = gameState.players.filter(p => p.isAlive && (p.role === "狼人" || p.role === "白狼王"));
+            const targetList = wolves.length > 0 ? wolves : gameState.players.filter(p => p.isAlive && p.id !== hunterId);
+            
+            if (targetList.length > 0) {
+                const victim = targetList[Math.floor(Math.random() * targetList.length)];
+                victim.isAlive = false;
+                victim.deathType = "HUNTER_SHOOT";
+                addLog(`💥 獵人子彈「砰！」地貫穿了 #${victim.id} 號【${victim.name}】！`, "text-red-500 font-extrabold");
+            }
+        }
+
+        // --- 主狀態機控制流 ---
+
+        async function proceedGameFlow() {
+            if (!gameState.isHost) return;
+
+            const btnNext = document.getElementById("btn-next-step");
+            btnNext.disabled = true;
+            btnNext.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 處理中...`;
+
+            try {
+                if (gameState.phase === "ROLE_REVEAL") {
+                    gameState.phase = "NIGHT_ACTION";
+                    gameState.nightPhase = "WEREWOLVES";
+                    addLog(`🌑 第 ${gameState.dayNum} 天夜幕降下。天黑請閉眼，狼人請睜眼...`, "text-indigo-400 font-bold");
+                    await runAIWerewolvesNight();
+                } 
+                else if (gameState.phase === "NIGHT_ACTION") {
+                    if (gameState.nightPhase === "WEREWOLVES") {
+                        gameState.nightPhase = "SEER";
+                        addLog("🔮 狼人請閉眼，預言家請睜眼...", "text-purple-400 font-bold");
+                        await runAISeerNight();
+                    } 
+                    else if (gameState.nightPhase === "SEER") {
+                        gameState.nightPhase = "WITCH";
+                        addLog("🧪 預言家請閉眼，女巫請睜眼...", "text-emerald-400 font-bold");
+                        await runAIWitchNight();
+                    } 
+                    else if (gameState.nightPhase === "WITCH") {
+                        gameState.phase = "DAY_ANNOUNCE";
+                        gameState.nightPhase = "CLOSED_EYES";
+                        await processNightDeaths();
+                    }
+                } 
+                else if (gameState.phase === "DAY_ANNOUNCE") {
+                    // 天亮了，隨機決定發言順序（無警長模式）
+                    gameState.phase = "DAY_DISCUSSION";
+                    gameState.currentSpeakerIdx = 0;
+                    
+                    const aliveIds = gameState.players.filter(p => p.isAlive).map(p => p.id);
+                    // 隨機打亂發言順序
+                    gameState.speakerQueue = [...aliveIds].sort(() => Math.random() - 0.5);
+                    
+                    addLog(`🎙️ 白天發言階段開始。無警長模式下隨機產生順序：[${gameState.speakerQueue.join(" ➡️ ")}]`, "text-sky-400 font-bold");
+                    await runSpeakerQueue();
+                } 
+                else if (gameState.phase === "DAY_DISCUSSION") {
+                    // 全員發言完畢，進入投票
+                    gameState.phase = "DAY_VOTING";
+                    addLog("🗳️ 討論結束，請全體存活玩家進行公開投票指控！", "text-rose-400 font-bold");
+                } 
+                else if (gameState.phase === "DAY_VOTING") {
+                    await processVotingResults();
+                }
+                else if (gameState.phase === "DAY_PK_VOTE") {
+                    await processPKVotingResults();
+                }
+            } catch (err) {
+                console.error(err);
+            } finally {
+                btnNext.disabled = false;
+                btnNext.innerHTML = `<span>法官執行下一步</span> <i class="fa-solid fa-angle-right"></i>`;
+                updateUIPerPhase();
+                renderSeats();
+                
+                if (firebaseEnabled && gameState.roomCode && gameState.isHost) {
+                    syncGameStateToFirebase();
+                }
+            }
+        }
+
+        // --- 夜間 AI 行動組 ---
+
+        async function runAIWerewolvesNight() {
+            // 隨機觸發 AI 狼人決策
+            const aliveWolves = gameState.players.filter(p => p.isAlive && p.isAI && (p.role === "狼人" || p.role === "白狼王"));
+            if (aliveWolves.length > 0) {
+                const decision = await getAINightDecision(aliveWolves[0].id, "KILL");
+                // 僅當真人不是狼人時，完全由 AI 決定
+                const me = gameState.players.find(p => p.id === gameState.myId);
+                const myRoleIsWolf = (me?.role === "狼人" || me?.role === "白狼王") && me.isAlive;
+                if (!myRoleIsWolf && decision && decision.targetId) {
+                    gameState.werewolfTarget = decision.targetId;
+                    addLog(`[黑夜暗流] 狼人群體在暗處密謀妥當。`, "text-red-955/60 italic");
+                }
+            }
+        }
+
+        async function runAISeerNight() {
+            const seer = gameState.players.find(p => p.isAlive && p.role === "預言家" && p.isAI);
+            if (seer) {
+                const decision = await getAINightDecision(seer.id, "CHECK");
+                if (decision && decision.targetId) {
+                    const targetPlayer = gameState.players.find(p => p.id === decision.targetId);
+                    const isWolf = (targetPlayer.role === "狼人" || targetPlayer.role === "白狼王");
+                    gameState.seerCheckResult = isWolf ? "狼人陣營" : "好人陣營";
+                    addLog(`[黑夜暗流] 預言家默默祈禱，洞察了一名玩家的身世。`, "text-violet-955/60 italic");
+                }
+            }
+        }
+
+        async function runAIWitchNight() {
+            const witch = gameState.players.find(p => p.isAlive && p.role === "女巫" && p.isAI);
+            if (witch) {
+                const decision = await getAINightDecision(witch.id, "WITCH");
+                if (decision) {
+                    // 解藥自救或救人
+                    if (decision.useSave && !gameState.witchSaveUsed && gameState.werewolfTarget) {
+                        // 確保第一晚可以自救，之後不自救
+                        if (gameState.dayNum === 1 || gameState.werewolfTarget !== witch.id) {
+                            gameState.werewolfTarget = null; // 救活了
+                            gameState.witchSaveUsed = true;
+                            addLog(`[黑夜暗流] 女巫開啟了解藥，微光閃過。`, "text-emerald-955/60 italic");
+                        }
+                    } 
+                    // 毒藥
+                    else if (decision.targetId && decision.targetId > 0 && !gameState.witchPoisonUsed) {
+                        gameState.poisonTarget = decision.targetId;
+                        gameState.witchPoisonUsed = true;
+                        addLog(`[黑夜暗流] 毒氣瀰漫，女巫拋出了裝有墨綠色毒液的藥瓶。`, "text-rose-955/60 italic");
+                    }
+                }
+            }
+        }
+
+        // 昨晚死訊結算
+        async function processNightDeaths() {
+            gameState.lastNightDeaths = [];
+            
+            // 狼人暗殺死者
+            if (gameState.werewolfTarget) {
+                const target = gameState.players.find(p => p.id === gameState.werewolfTarget);
+                if (target) {
+                    target.isAlive = false;
+                    target.deathType = "WOLF_KILL";
+                    target.diedOnNight = gameState.dayNum;
+                    gameState.lastNightDeaths.push(target.id);
+                }
+            }
+            // 女巫毒藥死者
+            if (gameState.poisonTarget) {
+                const target = gameState.players.find(p => p.id === gameState.poisonTarget);
+                if (target) {
+                    target.isAlive = false;
+                    target.deathType = "POISON"; // 被毒死，悶槍！
+                    target.diedOnNight = gameState.dayNum;
+                    gameState.lastNightDeaths.push(target.id);
+                }
+            }
+
+            addLog("☀️ 天亮了！公佈昨夜死亡結果...", "text-amber-400 font-bold");
+
+            if (gameState.lastNightDeaths.length === 0) {
+                addLog("昨晚是平安夜，無人死亡！", "text-emerald-400 font-bold");
+            } else {
+                addLog(`昨晚死亡玩家：${gameState.lastNightDeaths.map(id => `${id} 號`).join(", ")}`, "text-rose-500 font-bold");
+                
+                // 獵人夜間死亡且不是被毒死、非白狼王帶走時，觸發射擊
+                gameState.lastNightDeaths.forEach(id => {
+                    const deadP = gameState.players.find(p => p.id === id);
+                    if (deadP && deadP.role === "獵人") {
+                        if (deadP.deathType === "POISON") {
+                            addLog(`⚠️ 獵人 #${deadP.id} 號因死於毒藥，已被悶槍，技能失效。`, "text-gray-500");
+                        } else {
+                            triggerHunterShoot(deadP.id);
+                        }
+                    }
+                });
+            }
+
+            // 遺言宣告判定
+            // 規則：只有在第一天夜晚死去的玩家有遺言（被毒死除外）。
+            if (gameState.dayNum === 1) {
+                gameState.lastNightDeaths.forEach(id => {
+                    const deadP = gameState.players.find(p => p.id === id);
+                    if (deadP && deadP.deathType !== "POISON") {
+                        addLog(`📢 請首夜死者 #${deadP.id} 號發表臨終遺言。`, "text-gray-300");
+                    }
+                });
+            } else {
+                addLog(`⚠️ 第 ${gameState.dayNum} 晚死去的玩家一律沒有發表遺言的權利。`, "text-gray-500");
+            }
+
+            // 清除暫存
+            gameState.werewolfTarget = null;
+            gameState.poisonTarget = null;
+
+            checkVictoryConditions();
+        }
+
+        // --- 白天發言隊列 ---
+        async function runSpeakerQueue() {
+            if (gameState.currentSpeakerIdx >= gameState.speakerQueue.length) {
+                addLog("🎙️ 所有玩家皆已完成發言。", "text-sky-300");
+                return;
+            }
+
+            const currentSpeakerId = gameState.speakerQueue[gameState.currentSpeakerIdx];
+            const speaker = gameState.players.find(p => p.id === currentSpeakerId);
+
+            if (!speaker || !speaker.isAlive) {
+                // 已死亡跳過
+                gameState.currentSpeakerIdx++;
+                await runSpeakerQueue();
+                return;
+            }
+
+            // 白狼王/狼人 AI 機率自爆邏輯
+            if (speaker.isAI && (speaker.role === "狼人" || speaker.role === "白狼王") && Math.random() < 0.15) {
+                await handleSelfDetonation(speaker.id);
+                return;
+            }
+
+            if (speaker.isAI) {
+                const text = await generateAISpeechText(speaker.id);
+                addSpeech(speaker.id, speaker.name, text, false);
+                
+                // 模擬說話延遲
+                setTimeout(async () => {
+                    gameState.currentSpeakerIdx++;
+                    updateUIPerPhase();
+                    await runSpeakerQueue();
+                }, 2500);
+            } else {
+                updateUIPerPhase();
+            }
+        }
+
+        // 真人手動送出發言
+        document.getElementById("btn-send-speech").onclick = async () => {
+            const input = document.getElementById("my-speech-input");
+            const text = input.value.trim();
+            if (!text) return;
+
+            const me = gameState.players.find(p => p.id === gameState.myId);
+            addSpeech(me.id, me.name, text, true);
+            
+            input.value = "";
+            input.disabled = true;
+            document.getElementById("btn-send-speech").disabled = true;
+
+            gameState.currentSpeakerIdx++;
+            updateUIPerPhase();
+            await runSpeakerQueue();
+        };
+
+        // --- 公投結果結算與平票 PK 機制 ---
+
+        async function processVotingResults() {
+            addLog("📊 正在收集並清點全體存活玩家的指控選票...", "text-rose-400 font-bold");
+
+            // 讓其餘 AI 玩家做出公投決策
+            for (let p of gameState.players) {
+                if (p.isAlive && p.isAI) {
+                    p.voteFor = await getAIVoteDecision(p.id, false);
+                }
+            }
+
+            // 計票
+            const voteMap = {};
+            gameState.players.forEach(p => {
+                if (p.isAlive) {
+                    if (p.voteFor && p.voteFor > 0) {
+                        voteMap[p.voteFor] = (voteMap[p.voteFor] || 0) + 1;
+                        addLog(`[公投指控] #${p.id}【${p.name}】 指向了 -> #${p.voteFor} 號`, "text-gray-500");
+                    } else {
+                        addLog(`[公投指控] #${p.id}【${p.name}】 棄權`, "text-gray-600");
+                    }
+                }
+            });
+
+            // 統計
+            let maxVotes = 0;
+            let tiedCandidates = [];
+
+            for (let [targetId, count] of Object.entries(voteMap)) {
+                const tid = parseInt(targetId);
+                if (count > maxVotes) {
+                    maxVotes = count;
+                    tiedCandidates = [tid];
+                } else if (count === maxVotes) {
+                    tiedCandidates.push(tid);
+                }
+            }
+
+            if (tiedCandidates.length === 0) {
+                addLog("流票！今日公投無人被放逐。", "text-yellow-400 font-bold");
+                goToNextNight();
+            } 
+            else if (tiedCandidates.length > 1) {
+                // 平票！觸發 PK
+                gameState.pkPlayers = tiedCandidates;
+                gameState.phase = "DAY_PK_VOTE";
+                addLog(`⚠️ 出現平票公投！ [#${tiedCandidates.join(", #")}] 票數相同（皆為 ${maxVotes} 票）。`, "text-yellow-400 font-black");
+                addLog(`進入 PK 發言階段，請其餘玩家準備再次表決。`, "text-yellow-400");
+                
+                // 模擬 PK 辯白發言
+                for (let cid of tiedCandidates) {
+                    const cand = gameState.players.find(p => p.id === cid);
+                    if (cand && cand.isAI) {
+                        const speech = await generateAISpeechText(cid);
+                        addSpeech(cid, cand.name, `【PK發言】${speech}`, false);
+                    }
+                }
+                updateUIPerPhase();
+            } 
+            else {
+                // 單一最高票
+                await executeBanishment(tiedCandidates[0], maxVotes);
+            }
+        }
+
+        // 平票 PK 結算
+        async function processPKVotingResults() {
+            addLog("📊 正在收取 PK 環節選票...", "text-amber-500 font-bold");
+
+            // 讓非 PK 玩家的 AI 做出 PK 投票
+            for (let p of gameState.players) {
+                if (p.isAlive && p.isAI && !gameState.pkPlayers.includes(p.id)) {
+                    p.voteFor = await getAIVoteDecision(p.id, true);
+                }
+            }
+
+            const voteMap = {};
+            gameState.players.forEach(p => {
+                if (p.isAlive && !gameState.pkPlayers.includes(p.id)) {
+                    if (p.voteFor && p.voteFor > 0) {
+                        voteMap[p.voteFor] = (voteMap[p.voteFor] || 0) + 1;
+                        addLog(`[PK票箱] #${p.id}【${p.name}】 指向了 -> #${p.voteFor} 號`, "text-gray-500");
+                    } else {
+                        addLog(`[PK票箱] #${p.id}【${p.name}】 選擇棄權`, "text-gray-600");
+                    }
+                }
+            });
+
+            let maxVotes = 0;
+            let tiedCandidates = [];
+
+            for (let [targetId, count] of Object.entries(voteMap)) {
+                const tid = parseInt(targetId);
+                if (count > maxVotes) {
+                    maxVotes = count;
+                    tiedCandidates = [tid];
+                } else if (count === maxVotes) {
+                    tiedCandidates.push(tid);
+                }
+            }
+
+            if (tiedCandidates.length === 1) {
+                await executeBanishment(tiedCandidates[0], maxVotes);
+            } else {
+                // 依舊平票：直接流票，不放逐任何人
+                addLog("📊 PK 依舊平票！今日公投宣布流票，無人出局！", "text-emerald-400 font-black");
+                goToNextNight();
+            }
+        }
+
+        // 執行放逐與獵人檢測
+        async function executeBanishment(banishId, votesCount) {
+            const victim = gameState.players.find(p => p.id === banishId);
+            victim.isAlive = false;
+            victim.deathType = "VOTE_BANISH";
+
+            addLog(`🔥 公投宣告：#${banishId} 號【${victim.name}】以 ${votesCount} 票當選，被正式驅逐出村！`, "text-red-500 font-extrabold text-sm");
+            addLog(`📢 被放逐玩家 #${banishId} 擁有臨終發表遺言的權利。`, "text-gray-300");
+
+            // 獵人技能發動檢測
+            if (victim.role === "獵人") {
+                triggerHunterShoot(victim.id);
+            }
+
+            gameState.pkPlayers = [];
+            checkVictoryConditions();
+            
+            if (gameState.phase !== "GAME_OVER") {
+                goToNextNight();
+            }
+        }
+
+        // 前進下一個夜晚
+        function goToNextNight() {
+            // 清理投票緩存
+            gameState.players.forEach(p => p.voteFor = null);
+            gameState.dayNum++;
+            gameState.phase = "NIGHT_ACTION";
+            gameState.nightPhase = "WEREWOLVES";
+            addLog(`🌑 夜深了，請緊閉雙眼。進入第 ${gameState.dayNum} 個黑夜...`, "text-indigo-400 font-bold");
+        }
+
+        // --- 屠邊勝負算法還原 ---
+        function checkVictoryConditions() {
+            const aliveWolves = gameState.players.filter(p => p.isAlive && (p.role === "狼人" || p.role === "白狼王"));
+            const aliveGods = gameState.players.filter(p => p.isAlive && (p.role === "預言家" || p.role === "女巫" || p.role === "獵人"));
+            const aliveVillagers = gameState.players.filter(p => p.isAlive && p.role === "平民");
+
+            // 1. 狼人全死 -> 好人勝
+            if (aliveWolves.length === 0) {
+                gameState.phase = "GAME_OVER";
+                addLog("🎉【好人陣營大獲全勝】！正義得到伸張，隱藏在村莊裏的邪惡狼人已被悉數剿滅！", "text-emerald-400 font-extrabold text-lg");
+                updateUIPerPhase();
+                return true;
+            }
+
+            // 2. 屠邊判定：神職死光 或 平民死光 -> 狼人勝
+            if (aliveGods.length === 0) {
+                gameState.phase = "GAME_OVER";
+                addLog("🐺【狼人陣營大捷】！神職人員已被全部獵殺（達成屠神），黑夜徹底將村莊吞噬！", "text-red-500 font-extrabold text-lg");
+                updateUIPerPhase();
+                return true;
+            }
+
+            if (aliveVillagers.length === 0) {
+                gameState.phase = "GAME_OVER";
+                addLog("🐺【狼人陣營大捷】！普通村民已被悉數斬殺（達成屠民），村莊已被狼權所統治！", "text-red-500 font-extrabold text-lg");
+                updateUIPerPhase();
+                return true;
+            }
+
+            return false;
+        }
+
+        // --- 按鈕功能與事件綁定 ---
+
+        document.getElementById("btn-join-room").onclick = async () => {
+            const roomCode = document.getElementById("input-room-code").value.trim();
+            const username = document.getElementById("input-username").value.trim() || "玩家1號";
+
+            if (!roomCode) {
+                gameState.roomCode = "";
+                gameState.isHost = true;
+                addLog("已加載本地單機。系統自動指派 9 位 Gemini AI 陪同對戰！", "text-wolfGold");
+                initLocalRoom();
+            } else {
+                if (!firebaseEnabled) {
+                    addLog("⚠️ 請點擊右上角設定 Firebase 才能啟用聯機對話！", "text-red-400");
+                    return;
+                }
+                gameState.roomCode = roomCode;
+                addLog(`正在對接雲端房間：[${roomCode}]...`, "text-wolfBlue");
+
+                // Rule 1: Strict Paths
+                const roomDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomCode);
+                const snap = await getDoc(roomDocRef);
+
+                if (!snap.exists()) {
+                    gameState.isHost = true;
+                    gameState.myId = 1;
+                    gameState.players = [new Player(1, username, false)];
+                    
+                    await setDoc(roomDocRef, {
+                        phase: "LOBBY",
+                        players: JSON.stringify(gameState.players),
+                        timestamp: Date.now()
+                    });
+                    addLog(`您已創立房間 [${roomCode}]。您是 1 號房主，等待其餘玩家連線或AI補齊開始！`, "text-emerald-400 font-bold");
+                } else {
+                    gameState.isHost = false;
+                    const data = snap.data();
+                    let current = [];
+                    try { current = JSON.parse(data.players) || []; } catch(e){}
+
+                    if (current.length >= 10) {
+                        addLog("❌ 房間人滿為患，請更換代碼！", "text-red-400");
+                        return;
+                    }
+
+                    gameState.myId = current.length + 1;
+                    const joiner = new Player(gameState.myId, username, false);
+                    current.push(joiner);
+
+                    gameState.players = current.map(p => {
+                        const cp = new Player(p.id, p.name, p.isAI, p.role, p.personality);
+                        cp.isAlive = p.isAlive;
+                        return cp;
+                    });
+
+                    await updateDoc(roomDocRef, {
+                        players: JSON.stringify(gameState.players)
+                    });
+                    addLog(`加入房間 [${roomCode}] 成功！您的座位編號是：#${gameState.myId}`, "text-emerald-400");
+                }
+
+                setupFirebaseRoomListener(roomCode);
+                renderSeats();
+                document.getElementById("btn-start-game").disabled = !gameState.isHost;
+            }
+        };
+
+        document.getElementById("btn-start-game").onclick = () => {
+            if (!gameState.isHost) return;
+
+            // 席位不滿，AI 補位
+            const curCount = gameState.players.length;
+            if (curCount < 10) {
+                addLog(`房間尚未滿員，上帝法官將自動指派 ${10 - curCount} 名 AI 補充空座...`, "text-indigo-400");
+                const aiNames = ["阿爾法", "貝塔", "墨菲", "泰坦", "幻影", "尤達", "愛麗絲", "卡倫", "零號"];
+                for (let i = curCount + 1; i <= 10; i++) {
+                    gameState.players.push(new Player(i, `AI_${aiNames[i - 1 - (curCount - 1)]}`, true));
+                }
+            }
+            startGame();
+        };
+
+        // 齒輪設定
+        document.getElementById("btn-config-modal").onclick = () => {
+            document.getElementById("config-modal").classList.remove("hidden");
+        };
+        document.getElementById("btn-close-config").onclick = () => {
+            document.getElementById("config-modal").classList.add("hidden");
+        };
+        document.getElementById("btn-save-config").onclick = () => {
+            const key = document.getElementById("input-gemini-key").value.trim();
+            const config = document.getElementById("input-firebase-config").value.trim();
+
+            localStorage.setItem("GEMINI_API_KEY", key);
+            localStorage.setItem("FIREBASE_CONFIG", config);
+
+            document.getElementById("config-modal").classList.add("hidden");
+            addLog("參數設定儲存完畢，即將刷新頁面生效...", "text-wolfGold");
+            setTimeout(() => { window.location.reload(); }, 800);
+        };
+
+        document.getElementById("btn-clear-logs").onclick = () => {
+            document.getElementById("game-logs-container").innerHTML = `<div class="text-gray-650 italic">日誌已清空。</div>`;
+        };
+
+        document.getElementById("btn-next-step").onclick = () => {
+            proceedGameFlow();
+        };
+
+        // 初始化渲染空座
+        renderSeats();
+
+    </script>
+</body>
+</html>
+
+```
